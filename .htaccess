@@ -1,0 +1,8 @@
+RewriteEngine On
+RewriteBase /hamba/
+
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,L]
