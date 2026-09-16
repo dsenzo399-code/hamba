@@ -18,16 +18,36 @@
   renderOnline();
   switchMode(mode);
 
-  watchGps(async (pos) => {
+  async function usePosition(pos, label) {
     myPos = pos;
-    document.getElementById('gpsLine').textContent = `GPS ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+    const acc = pos.accuracy ? ` · ±${Math.round(pos.accuracy)}m` : '';
+    document.getElementById('gpsLine').textContent = `${label} ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}${acc}`;
     if (!marker) marker = L.marker([pos.lat, pos.lng], { icon: vehicleIcon(mode === 'taxi' ? 'taxi' : 'car') }).addTo(map);
-    else marker.setLatLng([pos.lat, pos.lng]);
+    else { marker.setLatLng([pos.lat, pos.lng]); marker.setIcon(vehicleIcon(mode === 'taxi' ? 'taxi' : 'car')); }
     map.setView([pos.lat, pos.lng]);
     if (online) {
-      await Hamba.api('driver/location', { method: 'POST', body: { lat: pos.lat, lng: pos.lng, heading: pos.heading, speed_kmh: pos.speed ? pos.speed * 3.6 : null } });
+      await Hamba.api('driver/location', { method: 'POST', body: { lat: pos.lat, lng: pos.lng, heading: pos.heading ?? null, speed_kmh: pos.speed ? pos.speed * 3.6 : null } });
+    } else {
+      toast('Location set — go online to broadcast it');
     }
-  }, () => { document.getElementById('gpsLine').textContent = 'Enable GPS on this device — live tracking needs a real location.'; });
+  }
+
+  watchGps((pos) => usePosition(pos, 'GPS'), (err) => {
+    document.getElementById('gpsLine').textContent = (err && err.message) || 'Enable GPS on this device — or tap the map to set your location.';
+  });
+
+  // Manual pin: the demo fallback for weak indoor GPS. Tap along a road
+  // repeatedly and passengers watch the kombi move on their map.
+  let manualMode = false;
+  document.getElementById('manualGps').onclick = (e) => {
+    manualMode = !manualMode;
+    e.target.textContent = manualMode ? 'Tap the map to drop your pin (tap here to cancel)' : 'No GPS? Tap map to set location';
+    if (manualMode) toast('Tap the map where the car is');
+  };
+  map.on('click', (ev) => {
+    if (!manualMode) return;
+    usePosition({ lat: ev.latlng.lat, lng: ev.latlng.lng, heading: null, speed: null }, 'Manual pin');
+  });
 
   document.getElementById('onlineSwitch').onclick = async () => {
     if (!driver) return toast('Register as a driver first');
@@ -36,6 +56,9 @@
     if (!r.ok) { toast(r.error); return; }
     online = r.is_online;
     renderOnline();
+    if (online && myPos) {
+      await Hamba.api('driver/location', { method: 'POST', body: { lat: myPos.lat, lng: myPos.lng, heading: myPos.heading ?? null, speed_kmh: myPos.speed ? myPos.speed * 3.6 : null } });
+    }
     toast(online ? 'You are online' : 'You are offline');
   };
 
@@ -84,6 +107,9 @@
     const r = await Hamba.api('taxi/start-shift', { method: 'POST', body: { route_id: +sel.value, seat_capacity: cap } });
     if (!r.ok) { toast(r.error); return; }
     online = true; mode = 'taxi'; occupied = 0; renderOnline(); renderSeats();
+    if (myPos) {
+      await Hamba.api('driver/location', { method: 'POST', body: { lat: myPos.lat, lng: myPos.lng, heading: myPos.heading ?? null, speed_kmh: myPos.speed ? myPos.speed * 3.6 : null } });
+    }
     toast('Shift live — passengers can see this kombi');
   };
   document.getElementById('endShift').onclick = async () => {

@@ -62,14 +62,30 @@ function toast(msg) {
   setTimeout(() => { el.style.display = 'none'; }, 2800);
 }
 
-function watchGps(onPos, onErr) {
+function watchGps(onPos, onErr, opts = {}) {
   if (!navigator.geolocation) {
     onErr && onErr(new Error('Geolocation is not available in this browser.'));
     return null;
   }
-  return navigator.geolocation.watchPosition(
-    (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, heading: p.coords.heading, speed: p.coords.speed }),
-    (err) => onErr && onErr(err),
-    { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 }
-  );
+  let watcher = null;
+  let fellBack = false;
+  const start = (highAccuracy) => {
+    watcher = navigator.geolocation.watchPosition(
+      (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, heading: p.coords.heading, speed: p.coords.speed, accuracy: p.coords.accuracy }),
+      (err) => {
+        // Indoors, high-accuracy GPS often never gets a fix: fall back to network location.
+        if (!fellBack && highAccuracy && err && err.code === err.TIMEOUT) {
+          fellBack = true;
+          try { navigator.geolocation.clearWatch(watcher); } catch (e) {}
+          start(false);
+          onErr && onErr(new Error('GPS is weak indoors — trying network location…'));
+          return;
+        }
+        onErr && onErr(err);
+      },
+      { enableHighAccuracy: highAccuracy, maximumAge: 5000, timeout: highAccuracy ? 15000 : 30000 }
+    );
+  };
+  start(opts.highAccuracy !== false);
+  return { stop() { try { navigator.geolocation.clearWatch(watcher); } catch (e) {} } };
 }

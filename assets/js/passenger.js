@@ -23,7 +23,19 @@
     if (!myMarker) myMarker = L.marker([pos.lat, pos.lng], { icon: personIcon('#d4a017') }).addTo(map);
     else myMarker.setLatLng([pos.lat, pos.lng]);
     setGpsChip('GPS live');
-  }, (err) => setGpsChip('GPS blocked — enable location'));
+  }, (err) => setGpsChip(err && err.message ? String(err.message) : 'GPS blocked — enable location'));
+
+  // Demo fallback: if the phone never delivers GPS (indoors, denied),
+  // still show nearby kombis around Mbabane instead of a dead screen.
+  // A real fix replaces this with the passenger's rank or saved place.
+  setTimeout(() => {
+    if (!myPos) {
+      myPos = { lat: -26.3054, lng: 31.1367 };
+      pickup = pickup || { lat: myPos.lat, lng: myPos.lng, label: 'Mbabane (approximate)' };
+      if (!myMarker) myMarker = L.marker([myPos.lat, myPos.lng], { icon: personIcon('#d4a017') }).addTo(map);
+      setGpsChip('Approximate location — enable GPS for exact');
+    }
+  }, 8000);
 
   document.getElementById('tabRide').onclick = () => switchMode('ride');
   document.getElementById('tabTaxi').onclick = () => switchMode('taxi');

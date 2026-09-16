@@ -26,6 +26,7 @@ if (!$u) redirect('../login.php');
       <button class="switch" id="onlineSwitch" type="button" aria-label="Go online"><i></i></button>
     </div>
     <p id="gpsLine" class="small" style="color:#dce8df">Waiting for GPS from this device…</p>
+    <button class="btn gold" id="manualGps" type="button" style="margin-top:8px">No GPS? Tap map to set location</button>
     <div class="tabs" style="margin-top:12px">
       <button class="btn gold" id="modePrivate" type="button">Private rides</button>
       <button class="btn ghost" id="modeTaxi" type="button">Kombi / taxi</button>
