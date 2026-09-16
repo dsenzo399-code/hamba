@@ -105,13 +105,33 @@
     if (!myPos) return;
     if (mode === 'taxi') {
       const data = await Hamba.api(`nearby/taxis?lat=${myPos.lat}&lng=${myPos.lng}`);
+      const myB = await Hamba.api('taxi/boarding').catch(() => ({ boarding: null }));
+      const onboardId = myB.boarding ? myB.boarding.shift_id : null;
       const box = document.getElementById('taxiList');
-      box.innerHTML = (data.taxis || []).map(t => `
+      let html = (data.taxis || []).map(t => `
         <div class="card ${t.is_full ? 'is-full' : 'not-full'}">
           <div class="row spread"><strong>${esc(t.route)}</strong><span class="status-chip">${esc(t.movement_status)}</span></div>
           <div>${t.is_full ? '<b>FULL</b>' : `<b>${t.available} seats available</b> · ${t.occupied} on board`}</div>
           <div class="muted small">≈ ${t.eta_min} min away · ${t.distance_km} km · ${esc(t.vehicle)}</div>
-        </div>`).join('') || '<p class="muted">No live kombis nearby yet. Ask an operator to start a shift.</p>';
+          ${onboardId === t.shift_id
+            ? `<button class="btn danger" data-alight type="button">Alight — I'm getting off</button>`
+            : `<button class="btn primary" data-board="${t.shift_id}" type="button" ${t.is_full || onboardId ? 'disabled' : ''}>I'm on board</button>`}
+        </div>`).join('');
+      if (onboardId && !(data.taxis || []).some(t => t.shift_id === onboardId)) {
+        html = `<div class="card"><strong>You're on board</strong><p class="muted small">Your kombi is out of range or ended its shift.</p><button class="btn danger" data-alight type="button">Alight</button></div>` + html;
+      }
+      box.innerHTML = html || '<p class="muted">No live kombis nearby yet. Ask an operator to start a shift.</p>';
+      box.querySelectorAll('[data-board]').forEach(b => b.onclick = async () => {
+        const r = await Hamba.api('taxi/board', { method: 'POST', body: { shift_id: +b.dataset.board } });
+        toast(r.ok ? 'On board — seat counted' : r.error);
+        if (r.ok) document.getElementById('waitingToggle').checked = false;
+        poll();
+      });
+      box.querySelectorAll('[data-alight]').forEach(b => b.onclick = async () => {
+        await Hamba.api('taxi/alight', { method: 'POST', body: {} });
+        toast('Alighted — seat freed');
+        poll();
+      });
       Object.values(taxiMarkers).forEach(m => map.removeLayer(m));
       (data.taxis || []).forEach(t => {
         taxiMarkers[t.shift_id] = L.marker([t.lat, t.lng], { icon: vehicleIcon('taxi', t.heading) })

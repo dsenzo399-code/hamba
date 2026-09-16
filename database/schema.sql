@@ -158,6 +158,19 @@ CREATE TABLE IF NOT EXISTS taxi_waiting (
   CONSTRAINT fk_waiting_route FOREIGN KEY (route_id) REFERENCES taxi_routes(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS taxi_boardings (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  shift_id INT UNSIGNED NOT NULL,
+  passenger_id INT UNSIGNED NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  boarded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  alighted_at DATETIME DEFAULT NULL,
+  KEY idx_board_shift (shift_id, is_active),
+  KEY idx_board_passenger (passenger_id, is_active),
+  CONSTRAINT fk_board_shift FOREIGN KEY (shift_id) REFERENCES taxi_shifts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_board_passenger FOREIGN KEY (passenger_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS rides (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   passenger_id INT UNSIGNED NOT NULL,

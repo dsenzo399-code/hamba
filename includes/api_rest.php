@@ -293,6 +293,70 @@ function handle_taxi(string $action, string $method): void {
         json_response(['ok' => true, 'waiting' => $active]);
     }
 
+    if ($action === 'boarding' && $method === 'GET') {
+        $b = db()->prepare(
+            'SELECT b.*, r.origin_name, r.destination_name FROM taxi_boardings b
+             JOIN taxi_shifts s ON s.id = b.shift_id
+             JOIN taxi_routes r ON r.id = s.route_id
+             WHERE b.passenger_id = ? AND b.is_active = 1 AND s.status = "active" LIMIT 1'
+        );
+        $b->execute([$u['id']]);
+        json_response(['ok' => true, 'boarding' => $b->fetch() ?: null]);
+    }
+
+    if ($action === 'board' && $method === 'POST') {
+        require_csrf();
+        $in = json_input();
+        $shiftId = (int)($in['shift_id'] ?? 0);
+        $ex = db()->prepare('SELECT id FROM taxi_boardings WHERE passenger_id = ? AND is_active = 1 LIMIT 1');
+        $ex->execute([$u['id']]);
+        if ($ex->fetch()) {
+            json_response(['ok' => false, 'error' => 'You are already on board. Alight first.'], 409);
+        }
+        $s = db()->prepare('SELECT * FROM taxi_shifts WHERE id = ? AND status = "active"');
+        $s->execute([$shiftId]);
+        $shift = $s->fetch();
+        if (!$shift) {
+            json_response(['ok' => false, 'error' => 'That kombi is no longer active.'], 404);
+        }
+        db()->beginTransaction();
+        try {
+            $upd = db()->prepare('UPDATE taxi_shifts SET occupied_seats = occupied_seats + 1 WHERE id = ? AND status = "active" AND occupied_seats < seat_capacity');
+            $upd->execute([$shiftId]);
+            if ($upd->rowCount() === 0) {
+                db()->rollBack();
+                json_response(['ok' => false, 'error' => 'This kombi just filled up.'], 409);
+            }
+            db()->prepare('INSERT INTO taxi_boardings (shift_id, passenger_id) VALUES (?, ?)')->execute([$shiftId, $u['id']]);
+            db()->prepare('UPDATE taxi_shifts SET is_full = (occupied_seats >= seat_capacity) WHERE id = ?')->execute([$shiftId]);
+            db()->prepare('UPDATE taxi_waiting SET is_active = 0 WHERE passenger_id = ?')->execute([$u['id']]);
+            db()->commit();
+        } catch (Throwable $e) {
+            db()->rollBack();
+            json_response(['ok' => false, 'error' => 'Boarding failed.'], 500);
+        }
+        $du = db()->prepare('SELECT user_id FROM drivers WHERE id = ?');
+        $du->execute([$shift['driver_id']]);
+        $dr = $du->fetch();
+        if ($dr) {
+            notify((int)$dr['user_id'], 'passenger_boarded', 'Passenger on board', 'A passenger confirmed boarding from the app.', ['shift_id' => $shiftId]);
+        }
+        json_response(['ok' => true]);
+    }
+
+    if ($action === 'alight' && $method === 'POST') {
+        require_csrf();
+        $b = db()->prepare('SELECT * FROM taxi_boardings WHERE passenger_id = ? AND is_active = 1 LIMIT 1');
+        $b->execute([$u['id']]);
+        $row = $b->fetch();
+        if (!$row) {
+            json_response(['ok' => true, 'onboard' => false]);
+        }
+        db()->prepare('UPDATE taxi_boardings SET is_active = 0, alighted_at = NOW() WHERE id = ?')->execute([$row['id']]);
+        db()->prepare('UPDATE taxi_shifts SET occupied_seats = GREATEST(0, occupied_seats - 1), is_full = 0 WHERE id = ?')->execute([$row['shift_id']]);
+        json_response(['ok' => true]);
+    }
+
     $d = driver_for_user((int)$u['id']);
     if (!$d) {
         json_response(['ok' => false, 'error' => 'Driver profile required.'], 403);
@@ -317,6 +381,7 @@ function handle_taxi(string $action, string $method): void {
         $existing = active_shift((int)$d['id']);
         if ($existing) {
             db()->prepare('UPDATE taxi_shifts SET status="ended", ended_at=NOW() WHERE id=?')->execute([$existing['id']]);
+            db()->prepare('UPDATE taxi_boardings SET is_active=0, alighted_at=NOW() WHERE shift_id=? AND is_active=1')->execute([$existing['id']]);
         }
         $cap = max(1, (int)($in['seat_capacity'] ?? $veh['seat_capacity']));
         db()->prepare('INSERT INTO taxi_shifts (driver_id, vehicle_id, route_id, seat_capacity, occupied_seats) VALUES (?,?,?,?,0)')
@@ -347,6 +412,7 @@ function handle_taxi(string $action, string $method): void {
         $shift = active_shift((int)$d['id']);
         if ($shift) {
             db()->prepare('UPDATE taxi_shifts SET status="ended", ended_at=NOW() WHERE id=?')->execute([$shift['id']]);
+            db()->prepare('UPDATE taxi_boardings SET is_active=0, alighted_at=NOW() WHERE shift_id=? AND is_active=1')->execute([$shift['id']]);
         }
         db()->prepare('UPDATE drivers SET is_online=0 WHERE id=?')->execute([$d['id']]);
         json_response(['ok' => true]);
