@@ -28,5 +28,5 @@ if ! mysql -h 127.0.0.1 -u root -e "SELECT 1" >/dev/null 2>&1; then
   mysql --socket="$SOCK" -u root -e "SET PASSWORD FOR 'root'@'localhost' = PASSWORD('');" 2>/dev/null || true
 fi
 termux-wake-lock 2>/dev/null || true
-echo "Hamba engine running. Open the Hamba app now."
-exec php -S 0.0.0.0:8080 -t "$HOME/hamba"
+echo "Hamba engine running. Open http://127.0.0.1:8080/ in your browser."
+exec php -c "$HOME/hamba/php-termux.ini" -S 0.0.0.0:8080 -t "$HOME/hamba"
