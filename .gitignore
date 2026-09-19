@@ -2,9 +2,6 @@
 /storage/uploads/
 /storage/logs/
 /storage/installed.lock
-/mobile/node_modules/
-/mobile/android/
-/mobile/dist/
 .DS_Store
 Thumbs.db
 *.log
