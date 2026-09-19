@@ -4,6 +4,8 @@ declare(strict_types=1);
 header('X-Frame-Options: SAMEORIGIN');
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: strict-origin-when-cross-origin');
+// Lets the installed app's startup check reach the engine from its own origin.
+header('Access-Control-Allow-Origin: *');
 
 require dirname(__DIR__) . '/includes/bootstrap.php';
 require dirname(__DIR__) . '/includes/api_core.php';

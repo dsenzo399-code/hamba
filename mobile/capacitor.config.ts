@@ -5,6 +5,9 @@ const config: CapacitorConfig = {
   appId: 'com.hamba.app',
   appName: 'Hamba',
   webDir: 'www',
+  server: {
+    cleartext: true,
+  },
   android: {
     allowMixedContent: true,
   },
