@@ -1,8 +1,13 @@
 RewriteEngine On
 RewriteBase /hamba/
 
+# Preserve Bearer tokens for PHP (Apache strips Authorization by default)
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
+RewriteRule ^api/harbor/(.*)$ api/harbor.php?route=$1 [QSA,L]
 RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,L]

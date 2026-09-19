@@ -5,7 +5,15 @@ function current_user(): ?array {
     if (!empty($_SESSION['user'])) {
         return $_SESSION['user'];
     }
-    $hdr = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    $hdr = $_SERVER['HTTP_AUTHORIZATION'] ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+    if ($hdr === '' && function_exists('apache_request_headers')) {
+        foreach (apache_request_headers() as $k => $v) {
+            if (strtolower((string) $k) === 'authorization') {
+                $hdr = (string) $v;
+                break;
+            }
+        }
+    }
     if (preg_match('/Bearer\s+(.+)/', $hdr, $m)) {
         $user = user_from_token(trim($m[1]));
         if ($user) {

@@ -1,0 +1,28 @@
+workflows:
+  android-debug:
+    name: Hamba Android Debug
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      vars:
+        # Point the app at your backend. LAN test default below;
+        # override in Codemagic UI (App settings > Environment variables)
+        # with your public https:// URL once the PHP backend is hosted.
+        HAMBA_URL: http://10.240.99.94/hamba
+      node: 20
+    scripts:
+      - name: Install dependencies
+        working_directory: mobile
+        script: |
+          npm install
+      - name: Add and sync Android platform
+        working_directory: mobile
+        script: |
+          if [ ! -d android ]; then npx cap add android; fi
+          npx cap sync android
+      - name: Build debug APK
+        working_directory: mobile/android
+        script: |
+          ./gradlew assembleDebug
+    artifacts:
+      - mobile/android/app/build/outputs/apk/debug/app-debug.apk

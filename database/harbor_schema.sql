@@ -1,0 +1,168 @@
+-- Harbor mobile API tables (Imali-compatible dialect for the Harbor Android app).
+-- Mirrors the DTOs in Harbor's HarborApi Retrofit interface.
+-- Safe to import multiple times (IF NOT EXISTS). api/harbor.php also
+-- creates these lazily on first request via harbor_migrate().
+USE `hamba`;
+
+CREATE TABLE IF NOT EXISTS harbor_transactions (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  title VARCHAR(190) NOT NULL DEFAULT '',
+  amount DECIMAL(12,2) DEFAULT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'EML',
+  occurred_at VARCHAR(64) NOT NULL DEFAULT '',
+  category VARCHAR(120) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ht_user (user_id),
+  CONSTRAINT fk_ht_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_shopping_lists (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL DEFAULT '',
+  archived TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hsl_user (user_id),
+  CONSTRAINT fk_hsl_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_shopping_items (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  list_id CHAR(36) NOT NULL,
+  product_id VARCHAR(64) DEFAULT NULL,
+  name VARCHAR(190) NOT NULL DEFAULT '',
+  quantity DECIMAL(12,3) DEFAULT NULL,
+  unit VARCHAR(32) DEFAULT NULL,
+  checked TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hsi_user (user_id),
+  KEY idx_hsi_list (list_id),
+  CONSTRAINT fk_hsi_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_hsi_list FOREIGN KEY (list_id) REFERENCES harbor_shopping_lists(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_budgets (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL DEFAULT '',
+  amount DECIMAL(12,2) DEFAULT NULL,
+  period VARCHAR(64) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hb_user (user_id),
+  CONSTRAINT fk_hb_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_goals (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL DEFAULT '',
+  target DECIMAL(12,2) DEFAULT NULL,
+  current DECIMAL(12,2) DEFAULT NULL,
+  due_date VARCHAR(64) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hg_user (user_id),
+  CONSTRAINT fk_hg_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_forecast (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  period VARCHAR(64) NOT NULL DEFAULT '',
+  amount DECIMAL(12,2) DEFAULT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'EML',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hf_user (user_id),
+  CONSTRAINT fk_hf_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_recurring (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  title VARCHAR(190) NOT NULL DEFAULT '',
+  amount DECIMAL(12,2) DEFAULT NULL,
+  cadence VARCHAR(64) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hr_user (user_id),
+  CONSTRAINT fk_hr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_wishlist (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL DEFAULT '',
+  product_id VARCHAR(64) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hw_user (user_id),
+  CONSTRAINT fk_hw_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_reports (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  title VARCHAR(190) NOT NULL DEFAULT '',
+  period VARCHAR(64) NOT NULL DEFAULT '',
+  total DECIMAL(12,2) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hrp_user (user_id),
+  CONSTRAINT fk_hrp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_calendar (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  title VARCHAR(190) NOT NULL DEFAULT '',
+  date VARCHAR(64) NOT NULL DEFAULT '',
+  notes TEXT DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hc_user (user_id),
+  CONSTRAINT fk_hc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_categories (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(120) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hcat_user (user_id),
+  CONSTRAINT fk_hcat_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_stores (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL DEFAULT '',
+  address VARCHAR(255) DEFAULT NULL,
+  managed TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hs_user (user_id),
+  CONSTRAINT fk_hs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_products (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  name VARCHAR(190) NOT NULL DEFAULT '',
+  price DECIMAL(12,2) DEFAULT NULL,
+  quantity DECIMAL(12,3) DEFAULT NULL,
+  unit VARCHAR(32) DEFAULT NULL,
+  image_url VARCHAR(512) DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hp_user (user_id),
+  CONSTRAINT fk_hp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS harbor_prices (
+  id CHAR(36) NOT NULL PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  product_id VARCHAR(64) NOT NULL DEFAULT '',
+  store_id VARCHAR(64) NOT NULL DEFAULT '',
+  price DECIMAL(12,2) DEFAULT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'EML',
+  captured_at VARCHAR(64) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hpr_user (user_id),
+  KEY idx_hpr_product (product_id),
+  CONSTRAINT fk_hpr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
