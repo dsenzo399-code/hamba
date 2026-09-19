@@ -9,6 +9,7 @@ php -m | grep -qi pdo_mysql || pkg install -y php-mysql 2>/dev/null || true
 if [ ! -d "$PREFIX/var/lib/mysql/mysql" ]; then
   mariadb-install-db 2>/dev/null || mysql_install_db 2>/dev/null || true
 fi
+mkdir -p "$PREFIX/var/run/mysqld"
 mysqld_safe >/dev/null 2>&1 &
 sleep 3
 if ! mysql -h 127.0.0.1 -u root -e "SELECT 1" >/dev/null 2>&1; then
