@@ -6,14 +6,17 @@
   <title>Hamba</title>
   <style>
     body { font-family: sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #1c3d2e; color: #fff; }
-    .wrap { text-align: center; padding: 24px; max-width: 340px; }
+    .wrap { text-align: center; padding: 24px; max-width: 360px; width: 100%; box-sizing: border-box; }
     .logo { font-size: 2.4rem; font-weight: 700; }
     .logo span { color: #d4a017; }
     .hidden { display: none; }
     button, .btn { display: inline-block; background: #d4a017; color: #14241c; border: 0; border-radius: 999px; padding: 13px 22px; font-size: 1rem; font-weight: 700; margin-top: 12px; text-decoration: none; }
+    button.ghost { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.4); }
+    input { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,.3); margin-top: 8px; font-size: 1rem; }
     ol { text-align: left; }
     code { background: rgba(255,255,255,.15); padding: 2px 8px; border-radius: 8px; }
     .small { opacity: .75; font-size: .85rem; }
+    .server { background: rgba(255,255,255,.08); border-radius: 16px; padding: 12px; margin-top: 16px; }
   </style>
 </head>
 <body>
@@ -31,25 +34,42 @@
     </div>
     <div id="nosetup" class="hidden">
       <p><b>One tap left.</b></p>
-      <a class="btn" href="http://127.0.0.1:8080/install.php?auto=1">Set up Hamba</a>
+      <a class="btn" id="setupBtn" href="#">Set up Hamba</a>
       <p class="small">Creates everything automatically. Save the admin password it shows you.</p>
+    </div>
+    <div class="server">
+      <div class="small" id="serverLine"></div>
+      <div id="serverEdit" class="hidden">
+        <button class="ghost" id="presetPhone" type="button">On this phone (Termux)</button>
+        <button class="ghost" id="presetLaptop" type="button">Laptop (USB tether)</button>
+        <input id="serverUrl" inputmode="url" placeholder="http://10.184.236.135/hamba">
+        <button id="serverSave" type="button">Connect</button>
+      </div>
+      <button class="ghost" id="serverChange" type="button">Change server</button>
     </div>
   </div>
   <script>
-    var BASE = 'http://127.0.0.1:8080';
+    var KEY = 'hamba_base_url';
+    var BASE = localStorage.getItem(KEY) || 'http://127.0.0.1:8080/hamba';
     var busy = false;
     function show(id) {
       document.getElementById('noconnect').classList.toggle('hidden', id !== 'noconnect');
       document.getElementById('nosetup').classList.toggle('hidden', id !== 'nosetup');
     }
+    function paintServer() {
+      document.getElementById('serverLine').textContent = 'Server: ' + BASE;
+      document.getElementById('serverUrl').value = BASE;
+      document.getElementById('setupBtn').href = BASE + '/install.php?auto=1';
+    }
     async function check() {
       if (busy) return;
       busy = true;
+      paintServer();
       document.getElementById('status').textContent = 'Starting…';
       try {
         var ctrl = new AbortController();
         var t = setTimeout(function () { ctrl.abort(); }, 5000);
-        var res = await fetch(BASE + '/api/index.php?route=' + encodeURIComponent('auth/csrf'), { cache: 'no-store', signal: ctrl.signal });
+        var res = await fetch(BASE + '/api/v1/auth/csrf', { cache: 'no-store', signal: ctrl.signal });
         clearTimeout(t);
         if (res.status === 503) {
           document.getElementById('status').textContent = 'Engine is running.';
@@ -69,6 +89,27 @@
       busy = false;
     }
     document.getElementById('retry').onclick = function () { busy = false; check(); };
+    document.getElementById('serverChange').onclick = function () {
+      document.getElementById('serverEdit').classList.toggle('hidden');
+    };
+    document.getElementById('presetPhone').onclick = function () {
+      document.getElementById('serverUrl').value = 'http://127.0.0.1:8080/hamba';
+    };
+    document.getElementById('presetLaptop').onclick = function () {
+      var cur = document.getElementById('serverUrl').value;
+      if (cur.indexOf('127.0.0.1:8080') !== -1) cur = 'http://10.184.236.135/hamba';
+      document.getElementById('serverUrl').value = cur;
+    };
+    document.getElementById('serverSave').onclick = function () {
+      var v = document.getElementById('serverUrl').value.trim().replace(/\/+$/, '');
+      if (!v) return;
+      BASE = v;
+      localStorage.setItem(KEY, v);
+      document.getElementById('serverEdit').classList.add('hidden');
+      busy = false;
+      check();
+    };
+    paintServer();
     check();
   </script>
 </body>

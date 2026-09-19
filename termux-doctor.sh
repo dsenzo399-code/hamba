@@ -11,5 +11,5 @@ ls -ld "$PREFIX/var/run/mysqld" 2>&1
 echo "== 5 database awake? =="
 mysqladmin -u root ping 2>&1 || true
 echo "== 6 engine answering? =="
-curl -s -m 5 http://127.0.0.1:8080/api/health.php 2>&1 || echo FAIL
+curl -s -m 5 http://127.0.0.1:8080/hamba/api/health.php 2>&1 || echo FAIL
 echo "== done =="

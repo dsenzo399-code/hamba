@@ -23,6 +23,11 @@ if ($route === '') {
     }
 }
 $parts = $route === '' ? [] : explode('/', $route);
+// Optional /api/v1/ prefix (Termux router + pretty URLs) maps onto the same routes.
+if (($parts[0] ?? '') === 'v1') {
+    array_shift($parts);
+    $route = implode('/', $parts);
+}
 $resource = $parts[0] ?? '';
 $action = $parts[1] ?? 'index';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
