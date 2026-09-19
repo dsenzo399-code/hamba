@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hamba</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; min-height: 100vh; display: grid; place-items: center; background: #1c3d2e; color: #fff; }
+    .wrap { text-align: center; padding: 24px; max-width: 340px; }
+    .logo { font-size: 2.4rem; font-weight: 700; }
+    .logo span { color: #d4a017; }
+    .hidden { display: none; }
+    button, .btn { display: inline-block; background: #d4a017; color: #14241c; border: 0; border-radius: 999px; padding: 13px 22px; font-size: 1rem; font-weight: 700; margin-top: 12px; text-decoration: none; }
+    ol { text-align: left; }
+    code { background: rgba(255,255,255,.15); padding: 2px 8px; border-radius: 8px; }
+    .small { opacity: .75; font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">Hamba<span>.</span></div>
+    <p id="status">Starting…</p>
+    <div id="noconnect" class="hidden">
+      <p><b>Start the engine first.</b></p>
+      <ol>
+        <li>Open the <b>Termux</b> app</li>
+        <li>Type <code>./termux-run.sh</code>, press enter</li>
+        <li>Come back here — this screen opens Hamba by itself</li>
+      </ol>
+      <button id="retry" type="button">Try again</button>
+    </div>
+    <div id="nosetup" class="hidden">
+      <p><b>One tap left.</b></p>
+      <a class="btn" href="http://127.0.0.1:8080/install.php?auto=1">Set up Hamba</a>
+      <p class="small">Creates everything automatically. Save the admin password it shows you.</p>
+    </div>
+  </div>
+  <script>
+    var BASE = 'http://127.0.0.1:8080';
+    var busy = false;
+    function show(id) {
+      document.getElementById('noconnect').classList.toggle('hidden', id !== 'noconnect');
+      document.getElementById('nosetup').classList.toggle('hidden', id !== 'nosetup');
+    }
+    async function check() {
+      if (busy) return;
+      busy = true;
+      document.getElementById('status').textContent = 'Starting…';
+      try {
+        var ctrl = new AbortController();
+        var t = setTimeout(function () { ctrl.abort(); }, 5000);
+        var res = await fetch(BASE + '/api/index.php?route=' + encodeURIComponent('auth/csrf'), { cache: 'no-store', signal: ctrl.signal });
+        clearTimeout(t);
+        if (res.status === 503) {
+          document.getElementById('status').textContent = 'Engine is running.';
+          show('nosetup');
+        } else if (res.ok) {
+          location.href = BASE + '/';
+          return;
+        } else {
+          throw new Error('bad');
+        }
+      } catch (e) {
+        document.getElementById('status').textContent = 'Waiting for the engine…';
+        show('noconnect');
+        setTimeout(function () { busy = false; check(); }, 3000);
+        return;
+      }
+      busy = false;
+    }
+    document.getElementById('retry').onclick = function () { busy = false; check(); };
+    check();
+  </script>
+</body>
+</html>

@@ -31,6 +31,21 @@ if (is_file($lock) && ($_POST['force'] ?? '') !== '1') {
     $ok = true;
 }
 
+// One-tap setup for fresh installs (used by the Android app's first-run screen).
+// Only works when nothing is installed yet, so it can never wipe an existing app.
+if (($_GET['auto'] ?? '') === '1' && !is_file($lock)) {
+    $_SERVER['REQUEST_METHOD'] = 'POST';
+    $_POST = [
+        'admin_name' => 'Hamba Admin',
+        'admin_email' => 'admin@hamba.local',
+        'admin_password' => '',
+        'db_host' => '127.0.0.1',
+        'db_name' => 'hamba',
+        'db_user' => 'root',
+        'db_pass' => '',
+    ];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$ok) {
     $name = trim((string)($_POST['admin_name'] ?? 'Platform Owner'));
     $email = strtolower(trim((string)($_POST['admin_email'] ?? 'admin@hamba.local')));
